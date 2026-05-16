@@ -1,0 +1,403 @@
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3c
+% of this license or (at your option) any later version.
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{statementsp}[2026/03/28 v1.0 A package for theorem and proposition boxes]
+
+%Packages for statementsp
+\RequirePackage{xcolor}
+\RequirePackage{graphicx}
+\RequirePackage{tikz}
+\RequirePackage{ifthen} %Using \ifthenelse
+\RequirePackage{etoolbox} %Using \ifstrequal etc.
+\RequirePackage{amssymb} %Mathematical symbols
+\RequirePackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\RequirePackage{fancyvrb}
+
+
+%Reference
+% \mathtoolsset{showonlyrefs=true} %Give numbers of equation in equation and align environment only to refered them.
+\AtEndPreamble{%
+    \@ifpackageloaded{hyperref}{}{\RequirePackage{hyperref}}%
+}
+\RequirePackage{prettyref}
+\newcommand{\statementsp@link}[2]{%
+  \ifcsname r@#1\endcsname
+    \hyperref[#1]{#2}%
+  \else
+    #2%
+  \fi
+}
+\newcommand{\refsp}[1]{%
+  \ifcsname usevalue@ref#1\endcsname
+    \statementsp@link{#1}{\usevalue{ref#1}}%
+  \else
+    \statementsp@link{#1}{\prettyref{#1}}%
+  \fi
+}
+\newcommand{\refnamesp}[1]{%
+  \ifcsname usevalue@name#1\endcsname
+    \ifcsname usevalue@ref#1\endcsname
+      \statementsp@link{#1}{\usevalue{ref#1}~:\usevalue{name#1}}%
+    \else
+      \statementsp@link{#1}{\prettyref{#1}~:\usevalue{name#1}}%
+    \fi
+  \else
+    \refsp{#1}%
+    \PackageWarning{statementsp}{No name of statement #1}{}%
+  \fi
+}
+
+
+%Define counter
+\newcounter{statement@num}[section]
+\renewcommand{\thestatement@num}{\arabic{section}.\arabic{statement@num}}
+\newcounter{all@num} %Recall and advance notice counter
+\setcounter{all@num}{0}
+
+
+%Foundamental design of tcolorbox.
+\tcbset{
+    statement/.style 2 args={
+            enhanced,
+            coltitle=#1,
+            colframe=#2,
+            boxrule=2pt,
+            colback=white,
+            breakable,
+            sharp corners,
+            attach boxed title to top left={xshift=3mm, yshift*=-\tcboxedtitleheight/2},
+            boxed title style={
+                    colframe=#2,
+                    boxrule=2pt,
+                    colback=#2,
+                    sharp corners
+                },
+            after upper=\hfill $\square$
+        }
+}
+
+
+%For previewing and recalling box
+%moving
+\newcommand{\usevalue}[1]{%
+  \ifcsname usevalue@#1\endcsname
+    \csname usevalue@#1\endcsname
+  \else
+    ??%
+  \fi
+}
+\newcommand{\definevalue}[2]{%
+  \global\@namedef{usevalue@#1}{#2}%
+  \immediate\write\@auxout{%
+    \unexpanded{\global\@namedef{usevalue@#1}{#2}}%
+  }
+}
+\newcommand{\statementsp@defvalueexpanded}[2]{%
+  \begingroup
+    \edef\statementsp@tmp{\endgroup
+      \noexpand\definevalue{#1}{#2}}%
+  \statementsp@tmp
+}
+
+\newcommand{\allusevalue}[1]{
+    \ifcsname allusevalue@#1\endcsname
+        \csname allusevalue@#1\endcsname
+    \else
+        0
+    \fi
+}
+
+\newcommand{\statementnameusevalue}[1]{
+    \ifcsname statementname@#1\endcsname
+        \csname statementname@#1\endcsname
+    \else
+        ??
+    \fi
+}
+
+\newcommand{\statementfileusevalue}[1]{%
+    \ifcsname statementfile@#1\endcsname
+        \csname statementfile@#1\endcsname
+    \else
+        statementsp-missing-body.tex%
+    \fi
+}
+\newcommand{\definefilevalue}[2]{%
+  \global\@namedef{statementfile@#1}{#2}%
+  \immediate\write\@auxout{%
+    \unexpanded{\global\@namedef{statementfile@#1}}{#2}%
+  }%
+}
+\newcommand{\statementsp@inputbody}[1]{\input{#1}}
+\newcommand{\statementsp@numberedrefbox}[4]{%
+    \ifstrequal{#3}{}{%
+        \begin{tcolorbox}[statement={#1tcol}{#1bcol}, title={\underline{\statementsp@link{#2}{\usevalue{ref#2}}}~ (#4)}]
+            \statementsp@inputbody{\statementfileusevalue{#2}}%
+        \end{tcolorbox}%
+    }{%
+        \begin{tcolorbox}[statement={#1tcol}{#1bcol}, title={\underline{\statementsp@link{#2}{\usevalue{ref#2}}}:~(#3)~ (#4)}]
+            \statementsp@inputbody{\statementfileusevalue{#2}}%
+        \end{tcolorbox}%
+    }%
+}
+\newcommand{\statementsp@starredrefbox}[4]{%
+    \ifstrequal{#3}{}{%
+        \begin{tcolorbox}[statement={#1tcol}{#1bcol}, title={\underline{\hspace{-1.5mm}\statementnameusevalue{#1}}~ (#4)}]
+            \statementsp@inputbody{\statementfileusevalue{#2}}%
+        \end{tcolorbox}%
+    }{%
+        \begin{tcolorbox}[statement={#1tcol}{#1bcol}, title={\underline{\hspace{-1.5mm}\statementnameusevalue{#1}}~(#3)~ (#4)}]
+            \statementsp@inputbody{\statementfileusevalue{#2}}%
+        \end{tcolorbox}%
+    }%
+}
+\def\statementsp@ifnextchar#1#2#3{%
+    \let\statementsp@expected#1%
+    \def\statementsp@true{#2}%
+    \def\statementsp@false{#3}%
+    \futurelet\statementsp@next\statementsp@ifnextchar@aux
+}
+\def\statementsp@ifnextchar@aux{%
+    \ifx\statementsp@next\statementsp@expected
+        \let\statementsp@nextaction\statementsp@true
+    \else
+        \let\statementsp@nextaction\statementsp@false
+    \fi
+    \statementsp@nextaction
+}
+
+
+%Giving a command of making a box
+\NewDocumentCommand{\newstatementsp}{m m m m}{
+    %#1=statement name, #2=statement display name, #3=box color, #4=title color
+    \makeatletter
+    \definecolor{#1tcol}{HTML}{#3}
+    \definecolor{#1bcol}{HTML}{#4}
+    \newrefformat{#1}{#2~\ref*{##1}}
+    \global\@namedef{statementname@#1}{#2}
+    \immediate\write\@auxout{\unexpanded{\global\@namedef{statementname@#1}{#2}}}
+    \makeatother
+}
+
+%statementsp environment
+\NewDocumentEnvironment{statementsp}{r<> D[]{} D(){} +!b}{
+    \ifstrequal{#2}{}{
+        \stepcounter{statement@num}
+        \stepcounter{all@num}
+    }{
+        \stepcounter{all@num}
+        \immediate\write\@auxout{\unexpanded{\global\@namedef{allusevalue@all#1:#2}}{\theall@num}}
+        \refstepcounter{statement@num}\label{#1:#2}
+        \statementsp@defvalueexpanded{ref#1:#2}{\statementnameusevalue{#1}~\thestatement@num}
+        
+        \ifstrequal{#3}{}{
+            \definevalue{pre#1:#2}{
+                \begin{tcolorbox}[statement={#1tcol}{#1bcol}, title={\underline{\statementsp@link{#1:#2}{\usevalue{ref#1:#2}}}~ (Preview)}]
+                    #4
+                \end{tcolorbox}
+            }
+            \definevalue{re#1:#2}{
+                \begin{tcolorbox}[statement={#1tcol}{#1bcol}, title={\underline{\statementsp@link{#1:#2}{\usevalue{ref#1:#2}}}~ (Recall)}]
+                    #4
+                \end{tcolorbox}
+            }
+        }{
+            \definevalue{name#1:#2}{(#3)}
+            \definevalue{pre#1:#2}{
+                \begin{tcolorbox}[statement={#1tcol}{#1bcol}, title={\underline{\statementsp@link{#1:#2}{\usevalue{ref#1:#2}}}:~(#3)~ (Preview)}]
+                    #4
+                \end{tcolorbox}
+            }
+            \definevalue{re#1:#2}{
+                \begin{tcolorbox}[statement={#1tcol}{#1bcol}, title={\underline{\statementsp@link{#1:#2}{\usevalue{ref#1:#2}}}:~(#3)~ (Recall)}]
+                    #4
+                \end{tcolorbox}
+            }
+        }
+    }
+    \ifstrequal{#3}{}{
+        \tcbset{
+            mybox/.style={title={\underline{\hspace{-1.5mm}\statementnameusevalue{#1}~\thestatement@num}}}
+        }
+    }{
+        \tcbset{
+            mybox/.style={title={\underline{\hspace{-1.5mm}\statementnameusevalue{#1}~\thestatement@num}:~(#3)}}
+        }
+    }
+    \begin{tcolorbox}[statement={#1tcol}{#1bcol}, mybox]
+        #4
+    \end{tcolorbox}
+}{}
+
+
+%statementsp* environment
+\NewDocumentEnvironment{statementsp*}{r<> D[]{} D(){} +!b}{
+    \ifstrequal{#2}{}{
+        \stepcounter{all@num}
+    }{
+        \phantomsection
+        \label{#1:#2}
+        \statementsp@defvalueexpanded{ref#1:#2}{\statementnameusevalue{#1}}
+        \stepcounter{all@num}
+        \immediate\write\@auxout{\unexpanded{\global\@namedef{allusevalue@all#1:#2}}{\theall@num}}
+        \ifstrequal{#3}{}{
+            \definevalue{pre#1:#2}{
+                \begin{tcolorbox}[statement={#1tcol}{#1bcol}, title={\underline{\hspace{-1.5mm}\statementnameusevalue{#1}}~ (Preview)}]
+                    #4
+                \end{tcolorbox}
+            }
+            \definevalue{re#1:#2}{
+                \begin{tcolorbox}[statement={#1tcol}{#1bcol}, title={\underline{\hspace{-1.5mm}\statementnameusevalue{#1}}~ (Recall)}]
+                    #4
+                \end{tcolorbox}
+            }
+        }{
+            \definevalue{name#1:#2}{(#3)}
+            \definevalue{pre#1:#2}{
+                \begin{tcolorbox}[statement={#1tcol}{#1bcol}, title={\underline{\hspace{-1.5mm}\statementnameusevalue{#1}}~(#3)~ (Preview)}]
+                    #4
+                \end{tcolorbox}
+            }
+            \definevalue{re#1:#2}{
+                \begin{tcolorbox}[statement={#1tcol}{#1bcol}, title={\underline{\hspace{-1.5mm}\statementnameusevalue{#1}}~(#3)~ (Recall)}]
+                    #4
+                \end{tcolorbox}
+            }
+        }
+    }
+    \ifstrequal{#3}{}{
+        \tcbset{
+            mybox/.style={title={\underline{\hspace{-1.5mm}\statementnameusevalue{#1}}}}
+        }
+    }{
+        \tcbset{
+            mybox/.style={title={\underline{\hspace{-1.5mm}\statementnameusevalue{#1}}~(#3)}}
+        }
+    }
+    \begin{tcolorbox}[statement={#1tcol}{#1bcol}, mybox]
+        #4
+    \end{tcolorbox}
+}{}
+
+% Verbatim-capable environments.
+% Use these when the body contains \verb or verbatim-like environments.
+\NewDocumentEnvironment{statementspverb}{r<> D[]{} D(){}}{
+    \def\statementsp@prefix{#1}%
+    \def\statementsp@label{#2}%
+    \def\statementsp@name{#3}%
+    \edef\statementsp@tcol{#1tcol}%
+    \edef\statementsp@bcol{#1bcol}%
+    \ifstrequal{#2}{}{%
+        \stepcounter{statement@num}%
+        \stepcounter{all@num}%
+        \edef\statementsp@bodyfile{\jobname-statementsp-\theall@num.tex}%
+    }{%
+        \stepcounter{all@num}%
+        \immediate\write\@auxout{\unexpanded{\global\@namedef{allusevalue@all#1:#2}}{\theall@num}}%
+        \refstepcounter{statement@num}\label{#1:#2}%
+        \statementsp@defvalueexpanded{ref#1:#2}{\statementnameusevalue{#1}~\thestatement@num}%
+        \edef\statementsp@bodyfile{\jobname-statementsp-\theall@num.tex}%
+        \edef\statementsp@tmp{\noexpand\definefilevalue{#1:#2}{\statementsp@bodyfile}}%
+        \statementsp@tmp
+        \ifstrequal{#3}{}{%
+            \definevalue{pre#1:#2}{\statementsp@numberedrefbox{#1}{#1:#2}{}{Preview}}%
+            \definevalue{re#1:#2}{\statementsp@numberedrefbox{#1}{#1:#2}{}{Recall}}%
+        }{%
+            \definevalue{name#1:#2}{(#3)}%
+            \definevalue{pre#1:#2}{\statementsp@numberedrefbox{#1}{#1:#2}{#3}{Preview}}%
+            \definevalue{re#1:#2}{\statementsp@numberedrefbox{#1}{#1:#2}{#3}{Recall}}%
+        }%
+    }%
+    \VerbatimEnvironment
+    \begin{VerbatimOut}{\statementsp@bodyfile}%
+}{%
+    \end{VerbatimOut}%
+    \ifstrequal{\statementsp@name}{}{%
+        \tcbset{%
+            mybox/.style={title={\underline{\hspace{-1.5mm}\statementnameusevalue{\statementsp@prefix}~\thestatement@num}}}%
+        }%
+    }{%
+        \tcbset{%
+            mybox/.style={title={\underline{\hspace{-1.5mm}\statementnameusevalue{\statementsp@prefix}~\thestatement@num}:~(\statementsp@name)}}%
+        }%
+    }%
+    \begin{tcolorbox}[statement={\statementsp@tcol}{\statementsp@bcol}, mybox]
+        \statementsp@inputbody{\statementsp@bodyfile}%
+    \end{tcolorbox}%
+}
+
+\NewDocumentEnvironment{statementspverb*}{r<> D[]{} D(){}}{
+    \def\statementsp@prefix{#1}%
+    \def\statementsp@label{#2}%
+    \def\statementsp@name{#3}%
+    \edef\statementsp@tcol{#1tcol}%
+    \edef\statementsp@bcol{#1bcol}%
+    \ifstrequal{#2}{}{%
+        \stepcounter{all@num}%
+        \edef\statementsp@bodyfile{\jobname-statementsp-\theall@num.tex}%
+    }{%
+        \phantomsection
+        \label{#1:#2}%
+        \statementsp@defvalueexpanded{ref#1:#2}{\statementnameusevalue{#1}}%
+        \stepcounter{all@num}%
+        \edef\statementsp@bodyfile{\jobname-statementsp-\theall@num.tex}%
+        \immediate\write\@auxout{\unexpanded{\global\@namedef{allusevalue@all#1:#2}}{\theall@num}}%
+        \edef\statementsp@tmp{\noexpand\definefilevalue{#1:#2}{\statementsp@bodyfile}}%
+        \statementsp@tmp
+        \ifstrequal{#3}{}{%
+            \definevalue{pre#1:#2}{\statementsp@starredrefbox{#1}{#1:#2}{}{Preview}}%
+            \definevalue{re#1:#2}{\statementsp@starredrefbox{#1}{#1:#2}{}{Recall}}%
+        }{%
+            \definevalue{name#1:#2}{(#3)}%
+            \definevalue{pre#1:#2}{\statementsp@starredrefbox{#1}{#1:#2}{#3}{Preview}}%
+            \definevalue{re#1:#2}{\statementsp@starredrefbox{#1}{#1:#2}{#3}{Recall}}%
+        }%
+    }%
+    \VerbatimEnvironment
+    \begin{VerbatimOut}{\statementsp@bodyfile}%
+}{%
+    \end{VerbatimOut}%
+    \ifstrequal{\statementsp@name}{}{%
+        \tcbset{%
+            mybox/.style={title={\underline{\hspace{-1.5mm}\statementnameusevalue{\statementsp@prefix}}}}%
+        }%
+    }{%
+        \tcbset{%
+            mybox/.style={title={\underline{\hspace{-1.5mm}\statementnameusevalue{\statementsp@prefix}}~(\statementsp@name)}}%
+        }%
+    }%
+    \begin{tcolorbox}[statement={\statementsp@tcol}{\statementsp@bcol}, mybox]
+        \statementsp@inputbody{\statementsp@bodyfile}%
+    \end{tcolorbox}%
+}
+
+%Preview and Recall command
+\NewDocumentCommand{\refcallsp}{m}{
+    \ifnumcomp{\value{all@num}}{<}{\allusevalue{all#1}}{
+        \usevalue{pre#1}
+    }{
+        \usevalue{re#1}
+    }
+}
+
+
+% %Proof environment
+% \renewcommand{\proofname}{\textit{pf}.)} %Change first style of proof
+% \renewcommand{\qedsymbol}{$\blacksquare$} %Change end style of proof
+% \makeatletter
+% \renewenvironment{proof}[1][\proofname]{\par
+%     \pushQED{\qed}%
+%     \normalfont \topsep6\p@\@plus6\p@\relax
+%     \trivlist
+%     \item\relax
+%     {
+%         #1\@addpunct{}}\hspace\labelsep\ignorespaces
+% }{%
+%     \popQED\endtrivlist\@endpefalse
+% }
+% \makeatother
+
+% \newenvironment{pfsp}{\begin{proof}}{\end{proof} \vspace{5mm}}
