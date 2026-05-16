@@ -1,0 +1,29 @@
+\documentclass{article}
+\usepackage{statementsp}
+\newstatementsp{th}{Theorem}{000000}{B3D9FF}
+\newstatementsp{ex}{Example}{000000}{D9EDD9}
+\begin{document}
+\refcallsp{th:main}
+
+\begin{statementspverb}<th>[main](Verbatim command)
+Inline verbatim: \verb|a_b + c_d|.
+
+Displayed verbatim:
+\begin{verbatim}
+for i in range(3):
+    print(i)
+\end{verbatim}
+\end{statementspverb}
+
+\refcallsp{th:main}
+
+\begin{statementspverb}<ex>[]()
+Unlabeled box with \verb|x_y|.
+\end{statementspverb}
+
+\begin{statementspverb*}<ex>[star](Starred verbatim)
+Starred inline verbatim: \verb|hello_world|.
+\end{statementspverb*}
+
+\refcallsp{ex:star}
+\end{document}
