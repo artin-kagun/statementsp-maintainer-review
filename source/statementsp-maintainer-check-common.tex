@@ -1,0 +1,337 @@
+% statementsp 開発者向けの比較 PDF 共通本文。
+% fixed/original のラッパーは \StatementspCheckTitle だけを変える。
+
+\documentclass{ltjsarticle}
+\usepackage[a4paper,margin=25mm]{geometry}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{fancyvrb}
+\usepackage{statementsp}
+\DefineVerbatimEnvironment{codeblock}{Verbatim}{fontsize=\small,frame=single}
+
+\newstatementsp{th}{定理}{000000}{B3D9FF}
+\newstatementsp{df}{定義}{000000}{FFB3B3}
+\newstatementsp{lem}{補題}{000000}{D9EDD9}
+
+\title{\StatementspCheckTitle}
+\author{statementsp 互換性・回帰確認}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{この PDF の目的}
+
+この PDF は、同じ本文を元版の \texttt{statementsp.sty} と修正版の
+\texttt{statementsp.sty} の両方でコンパイルし、挙動の違いを確認するためのものです。
+PDF のタイトルだけで、元版で作ったものか修正版で作ったものかを区別できるようにしています。
+タイトル以外の確認本文は同一です。
+
+\section{使用したプリアンブルとビルドコマンド}
+
+この PDF の確認本文は、次のプリアンブルで作成しています。
+
+\begin{codeblock}
+\documentclass{ltjsarticle}
+\usepackage[a4paper,margin=25mm]{geometry}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{fancyvrb}
+\usepackage{statementsp}
+
+\newstatementsp{th}{定理}{000000}{B3D9FF}
+\newstatementsp{df}{定義}{000000}{FFB3B3}
+\newstatementsp{lem}{補題}{000000}{D9EDD9}
+
+\title{\StatementspCheckTitle}
+\author{statementsp 互換性・回帰確認}
+\date{}
+\end{codeblock}
+
+修正版 PDF は次のコマンドで作成しています。
+
+\begin{codeblock}
+TEXINPUTS="maintainer-review/patched:maintainer-review/source:.:" \
+  latexmk -lualatex -interaction=nonstopmode -halt-on-error \
+  -outdir=maintainer-review/build/fixed \
+  maintainer-review/source/statementsp-maintainer-check-fixed.tex
+\end{codeblock}
+
+元版 PDF は次のコマンドで作成しています。
+
+\begin{codeblock}
+TEXINPUTS="maintainer-review/original:maintainer-review/source:.:" \
+  latexmk -lualatex -interaction=nonstopmode -halt-on-error \
+  -outdir=maintainer-review/build/original \
+  maintainer-review/source/statementsp-maintainer-check-original.tex
+\end{codeblock}
+
+\section{確認した問題}
+
+\begin{tabular}{p{0.32\linewidth}p{0.6\linewidth}}
+\toprule
+項目 & 確認した問題または疑い \\
+\midrule
+\texttt{ntheorem[amsthm]} との競合 &
+元版は内部で \texttt{amsthm} を読み込んでいます。そのため、文書側で
+\texttt{\textbackslash usepackage[amsthm]\{ntheorem\}} を使うと、
+\texttt{Command \textbackslash theoremstyle already defined} が出る場合があります。 \\
+\texttt{hyperref} オプション &
+元版は \texttt{hyperref} の文書全体設定をパッケージ側から強制していました。
+その中には \texttt{pdftitle=\{\}} などの空メタデータ指定も含まれていました。 \\
+省略された optional 引数 &
+元版では角括弧のラベルと丸括弧の個別名を完全に省略すると、
+\texttt{-NoValue-} が本文に出る場合があります。 \\
+初回コンパイル時の参照値 &
+元版では statement 名、Preview/Recall 用本文、個別名をその場で定義せず、
+aux ファイルに書いたものを次回コンパイルで読んでいます。そのため初回コンパイルでは
+\texttt{??} や undefined reference が出やすいです。 \\
+省略引数由来の重複ラベル &
+元版で optional 引数を完全に省略すると \texttt{-NoValue-} がラベルにも混ざり、
+複数回使った場合に \texttt{Label `th:-NoValue-' multiply defined} が出ます。 \\
+verbatim 本文 &
+元版の \texttt{statementsp} 本文は、\texttt{\textbackslash verb} や
+\texttt{verbatim} 環境を安全には扱えません。 \\
+\bottomrule
+\end{tabular}
+
+\section{修正方針}
+
+修正版では、既存機能を壊さないことを優先して、次の変更を行いました。
+
+\begin{itemize}[leftmargin=*]
+\item パッケージ内部の読み込みを \texttt{\textbackslash usepackage} から
+      \texttt{\textbackslash RequirePackage} に変更。
+\item 有効な実装では使われていなかった \texttt{amsthm} 依存を削除。
+\item \texttt{tcolorbox} はパッケージオプション付きで読まず、
+      必要なライブラリだけを \texttt{\textbackslash tcbuselibrary} で指定。
+\item \texttt{hyperref} のオプションを強制しないように変更。
+      文書側が未読み込みの場合だけ、プリアンブル末尾で \texttt{hyperref} を読み込みます。
+\item statement の値を aux ファイルに書くだけでなく、その場でも定義。
+\item 定義後の \texttt{\textbackslash refsp}、\texttt{\textbackslash refnamesp}、
+      Recall タイトルで使う表示用参照文字列を、その場で保存。
+\item 初回コンパイルでリンク先情報がまだ aux にない場合は、警告を出すリンクではなく
+      通常テキストとして参照を表示。2回目以降はリンクになります。
+\item 完全に省略された optional 引数を空文字として扱うように変更。
+\item 星付き statement の参照は、番号なし参照として種類名を表示。
+\item 既存の \texttt{statementsp} / \texttt{statementsp*} は維持したまま、
+      verbatim 対応用に \texttt{statementspverb} / \texttt{statementspverb*} を追加。
+\end{itemize}
+
+\section{Preview と Recall}
+
+次の命令では、本文中でまだ定義していない定理を Preview として表示します。
+
+\begin{codeblock}
+\refcallsp{th:main}
+\end{codeblock}
+
+\refcallsp{th:main}
+
+\section{old の参照問題の最小再現}
+
+old では、次のような通常の参照コードでも、1回目のコンパイルでは
+\texttt{??} や undefined reference が出ます。
+原因は、\texttt{\textbackslash newstatementsp} や statement 環境が必要な値を
+その場で定義せず、aux ファイルにだけ書いていたためです。
+latexmk などで複数回コンパイルすると解消するものの、初回 PDF は崩れます。
+修正版では、定義後の \texttt{\textbackslash refsp}、
+\texttt{\textbackslash refnamesp}、Recall は初回から表示できます。
+一方、定義前 Preview は未来の本文を表示する機能なので、初回だけは aux が必要です。
+
+\begin{codeblock}
+\refcallsp{th:main}
+
+\begin{statementsp}<th>[main](主定理)
+これは主定理です。
+\end{statementsp}
+
+参照: \refsp{th:main}
+名前付き参照: \refnamesp{th:main}
+\refcallsp{th:main}
+\end{codeblock}
+
+また、元版の星付き環境は \texttt{\textbackslash label} を置いていますが、
+\texttt{\textbackslash refstepcounter} による番号を持たないため、
+\texttt{\textbackslash refsp} の番号部分は空になります。
+修正版では、星付き statement は番号なし参照として種類名を表示します。
+
+\begin{codeblock}
+\begin{statementsp*}<lem>[star](番号なし補題)
+星付き statement です。
+\end{statementsp*}
+
+\refsp{lem:star}
+\refnamesp{lem:star}
+\refcallsp{lem:star}
+\end{codeblock}
+
+\section{通常の番号付き statement}
+
+\begin{codeblock}
+\begin{statementsp}<df>[group](群)
+集合 $G$ と演算 $\cdot$ が結合法則、単位元、逆元をもつとき、$G$ を群という。
+\end{statementsp}
+
+\begin{statementsp}<th>[main](ラグランジュの定理)
+$G$ が有限群で、$H$ が $G$ の部分群ならば、$|H|$ は $|G|$ を割り切る。
+\end{statementsp}
+\end{codeblock}
+
+\begin{statementsp}<df>[group](群)
+集合 $G$ と演算 $\cdot$ が結合法則、単位元、逆元をもつとき、$G$ を群という。
+\end{statementsp}
+
+\begin{statementsp}<th>[main](ラグランジュの定理)
+$G$ が有限群で、$H$ が $G$ の部分群ならば、$|H|$ は $|G|$ を割り切る。
+\end{statementsp}
+
+参照の確認: \refsp{th:main}。
+
+名前付き参照の確認: \refnamesp{df:group}。
+
+同じ定理を Recall として再表示します。
+
+\begin{codeblock}
+参照の確認: \refsp{th:main}。
+名前付き参照の確認: \refnamesp{df:group}。
+\refcallsp{th:main}
+\end{codeblock}
+
+\refcallsp{th:main}
+
+\section{ラベルや個別名の明示的な空指定}
+
+\begin{codeblock}
+\begin{statementsp}<lem>[no-title]()
+丸括弧の個別名を明示的に空にしています。
+\end{statementsp}
+
+\begin{statementsp}<df>[](ラベルなし)
+角括弧のラベルを明示的に空にしています。
+\end{statementsp}
+
+\begin{statementsp*}<lem>[starred](番号なし補題)
+星付き環境なので、statement カウンタは進みません。
+\end{statementsp*}
+
+\refcallsp{lem:starred}
+\end{codeblock}
+
+\begin{statementsp}<lem>[no-title]()
+丸括弧の個別名を明示的に空にしています。
+\end{statementsp}
+
+\begin{statementsp}<df>[](ラベルなし)
+角括弧のラベルを明示的に空にしています。
+\end{statementsp}
+
+\begin{statementsp*}<lem>[starred](番号なし補題)
+星付き環境なので、statement カウンタは進みません。
+\end{statementsp*}
+
+\refcallsp{lem:starred}
+
+\section{optional 引数を完全に省略した場合}
+
+次の二つは、角括弧のラベルと丸括弧の個別名をどちらも完全に省略しています。
+修正版では空指定として扱います。
+元版では、この箇所で \texttt{-NoValue-} が出ることを確認できます。
+
+\begin{codeblock}
+\begin{statementsp}<lem>
+番号付き環境で、ラベルと個別名を完全に省略しています。
+\end{statementsp}
+
+\begin{statementsp*}<df>
+星付き環境で、ラベルと個別名を完全に省略しています。
+\end{statementsp*}
+\end{codeblock}
+
+\begin{statementsp}<lem>
+番号付き環境で、ラベルと個別名を完全に省略しています。
+\end{statementsp}
+
+\begin{statementsp*}<df>
+星付き環境で、ラベルと個別名を完全に省略しています。
+\end{statementsp*}
+
+\section{元版でも安全な書き方との後方互換}
+
+元版で内部値を出さずに省略したい場合は、角括弧と丸括弧自体を省略せず、
+\texttt{[]()} と明示する必要があります。
+修正版でも、この書き方はそのまま使えます。
+
+\begin{codeblock}
+\begin{statementsp}<lem>[]()
+番号付き環境で、ラベルと個別名を明示的に空指定しています。
+\end{statementsp}
+
+\begin{statementsp*}<df>[]()
+星付き環境で、ラベルと個別名を明示的に空指定しています。
+\end{statementsp*}
+\end{codeblock}
+
+\begin{statementsp}<lem>[]()
+番号付き環境で、ラベルと個別名を明示的に空指定しています。
+\end{statementsp}
+
+\begin{statementsp*}<df>[]()
+星付き環境で、ラベルと個別名を明示的に空指定しています。
+\end{statementsp*}
+
+\section{verbatim 対応}
+
+修正版では \texttt{statementspverb} を追加しています。
+元版にはこの環境が存在しないため、元版でコンパイルした PDF ではコード例だけを表示します。
+
+\begin{codeblock}
+\ifcsname statementspverb\endcsname
+\begin{statementspverb}<th>[verb](verbatim 本文)
+インラインの verbatim: \verb|a_b + c_d|。
+
+複数行の verbatim:
+\begin{verbatim}
+for i in range(3):
+    print(i)
+\end{verbatim}
+\end{statementspverb}
+
+\refcallsp{th:verb}
+\else
+\begin{verbatim}
+\begin{statementspverb}<th>[verb](verbatim 本文)
+インラインの verbatim: \verb|a_b + c_d|。
+\end{statementspverb}
+\end{verbatim}
+\fi
+\end{codeblock}
+
+\ifcsname statementspverb\endcsname
+\begin{statementspverb}<th>[verb](verbatim 本文)
+インラインの verbatim: \verb|a_b + c_d|。
+
+複数行の verbatim:
+\begin{verbatim}
+for i in range(3):
+    print(i)
+\end{verbatim}
+\end{statementspverb}
+
+\refcallsp{th:verb}
+\else
+\begin{verbatim}
+\begin{statementspverb}<th>[verb](verbatim 本文)
+インラインの verbatim: \verb|a_b + c_d|。
+\end{statementspverb}
+\end{verbatim}
+\fi
+
+\section{空の引用符表示に関するメモ}
+
+「PDF の1ページ目または最後のページに \texttt{""} が出ることがある」という報告については、
+この比較ソースではページ本文としての \texttt{""} は再現していません。
+ただし、元版は \texttt{hyperref} に対して空の PDF メタデータを強制していたため、
+修正版ではその指定を削除し、PDF メタデータは文書側で指定できるようにしています。
+
+\end{document}
