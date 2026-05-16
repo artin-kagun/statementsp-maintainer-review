@@ -1,0 +1,37 @@
+\documentclass{article}
+\usepackage{statementsp}
+
+\newstatementsp{th}{Theorem}{000000}{B3D9FF}
+\newstatementsp{lem}{Lemma}{000000}{D9EDD9}
+
+\begin{document}
+
+Preview before definition:
+
+\refcallsp{th:main}
+
+\begin{statementsp}<th>[main](Main theorem)
+This is the main theorem.
+\end{statementsp}
+
+Reference after definition: \refsp{th:main}.
+
+Named reference after definition: \refnamesp{th:main}.
+
+Recall after definition:
+
+\refcallsp{th:main}
+
+\begin{statementsp*}<lem>[star](Starred lemma)
+This is a starred lemma.
+\end{statementsp*}
+
+Starred reference: \refsp{lem:star}.
+
+Starred named reference: \refnamesp{lem:star}.
+
+Starred recall:
+
+\refcallsp{lem:star}
+
+\end{document}
